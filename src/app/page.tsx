@@ -1,6 +1,7 @@
-import { redirect } from "next/navigation";
+import React from "react";
 
-export default function Home() {
-  //redirect("/dashboard/default");
-  return <>Coming Soon</>;
-}
+const Home = () => {
+  return <div>home</div>;
+};
+
+export default Home;

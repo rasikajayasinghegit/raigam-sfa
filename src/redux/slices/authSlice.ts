@@ -29,7 +29,9 @@ const initialState: AuthState = {
   error: null,
 };
 
-// ===== LOGIN =====
+/* ============================================================
+ * LOGIN
+ * ============================================================ */
 export const signIn = createAsyncThunk<
   { user: UserPayload; token: string; refreshToken: string },
   { userName: string; password: string },
@@ -37,6 +39,7 @@ export const signIn = createAsyncThunk<
 >("auth/signIn", async (credentials, { rejectWithValue }) => {
   try {
     const response = await api.post("/api/v1/auth/login", credentials);
+
     if (!response.data?.payload?.token) throw new Error("Invalid login");
 
     const user = response.data.payload as UserPayload;
@@ -48,12 +51,17 @@ export const signIn = createAsyncThunk<
     saveUser(user);
 
     return { user, token, refreshToken };
-  } catch (err: any) {
-    return rejectWithValue(err.message || "Login failed");
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      return rejectWithValue(err.message);
+    }
+    return rejectWithValue("Login failed");
   }
 });
 
-// ===== REFRESH TOKEN =====
+/* ============================================================
+ * REFRESH ACCESS TOKEN
+ * ============================================================ */
 export const refreshAccessToken = createAsyncThunk<
   { token: string },
   void,
@@ -61,10 +69,11 @@ export const refreshAccessToken = createAsyncThunk<
 >("auth/refreshAccessToken", async (_, { rejectWithValue }) => {
   try {
     const refreshToken = getRefreshToken();
-    if (!refreshToken || isRefreshTokenExpired())
-      throw new Error("Session expired. Please login again.");
 
-    // Backend refresh API
+    if (!refreshToken || isRefreshTokenExpired()) {
+      throw new Error("Session expired. Please login again.");
+    }
+
     const response = await api.post("/api/v1/auth/refresh", { refreshToken });
     const token = response.data.payload?.token;
 
@@ -72,20 +81,27 @@ export const refreshAccessToken = createAsyncThunk<
 
     saveToken(token);
     return { token };
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTokens();
     clearUser();
-    return rejectWithValue(err.message || "Token refresh failed");
+    if (err instanceof Error) {
+      return rejectWithValue(err.message);
+    }
+    return rejectWithValue("Token refresh failed");
   }
 });
 
-// ===== LOGOUT =====
+/* ============================================================
+ * LOGOUT
+ * ============================================================ */
 export const signOut = createAsyncThunk("auth/signOut", async () => {
   clearTokens();
   clearUser();
 });
 
-// ===== SLICE =====
+/* ============================================================
+ * SLICE
+ * ============================================================ */
 const authSlice = createSlice({
   name: "auth",
   initialState,

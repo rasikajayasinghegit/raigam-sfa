@@ -1,84 +1,100 @@
-// lib/storage.ts
+import type { UserPayload } from "@/types/auth";
+
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
-const REFRESH_TOKEN_EXPIRY_KEY = "refreshTokenExpiry";
+const REFRESH_EXPIRY_KEY = "refreshTokenExpiry";
 const USER_KEY = "authUser";
 
-/** Save access token */
+/** ============================
+ * ACCESS TOKEN HELPERS
+ * ============================ */
 export const saveToken = (token: string): void => {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  }
 };
 
-/** Get access token */
-export const getToken = (): string | null => {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+export const getToken = (): string | null =>
+  typeof window !== "undefined"
+    ? sessionStorage.getItem(ACCESS_TOKEN_KEY)
+    : null;
+
+/** Placeholder: always returns false unless you add real JWT expiry check */
+export const isAccessTokenExpired = (): boolean => {
+  // Optional improvement: decode JWT and check `exp` field
+  return false;
 };
 
-/** Save refresh token */
+/** ============================
+ * REFRESH TOKEN HELPERS
+ * ============================ */
 export const saveRefreshToken = (
   token: string,
   expiresInMs = 24 * 60 * 60 * 1000
 ): void => {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
-  sessionStorage.setItem(
-    REFRESH_TOKEN_EXPIRY_KEY,
-    (Date.now() + expiresInMs).toString()
-  );
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
+    sessionStorage.setItem(
+      REFRESH_EXPIRY_KEY,
+      (Date.now() + expiresInMs).toString()
+    );
+  }
 };
 
-/** Get refresh token */
-export const getRefreshToken = (): string | null => {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(REFRESH_TOKEN_KEY);
-};
+export const getRefreshToken = (): string | null =>
+  typeof window !== "undefined"
+    ? sessionStorage.getItem(REFRESH_TOKEN_KEY)
+    : null;
 
-/** Check access token expired */
-export const isAccessTokenExpired = (): boolean => {
-  // For frontend-only, treat as always valid
-  return false;
-};
-
-/** Check refresh token expired */
 export const isRefreshTokenExpired = (): boolean => {
-  const expiry = Number(sessionStorage.getItem(REFRESH_TOKEN_EXPIRY_KEY) || 0);
+  if (typeof window === "undefined") return true;
+  const expiry = Number(sessionStorage.getItem(REFRESH_EXPIRY_KEY) || 0);
   return Date.now() > expiry;
 };
 
-/** Clear tokens */
+/** ============================
+ * CLEAR TOKENS
+ * ============================ */
 export const clearTokens = (): void => {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_TOKEN_EXPIRY_KEY);
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_EXPIRY_KEY);
+  }
 };
 
-/** Save user */
-export const saveUser = (user: any): void => {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+/** ============================
+ * USER HELPERS
+ * ============================ */
+export const saveUser = (user: UserPayload): void => {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
 };
 
-/** Get user */
-export const getUser = (): any | null => {
+export const getUser = (): UserPayload | null => {
   if (typeof window === "undefined") return null;
   const user = sessionStorage.getItem(USER_KEY);
-  return user ? JSON.parse(user) : null;
+  if (!user) return null;
+  try {
+    return JSON.parse(user) as UserPayload;
+  } catch {
+    return null;
+  }
 };
 
-/** Clear user */
 export const clearUser = (): void => {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(USER_KEY);
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(USER_KEY);
+  }
 };
 
-/** Auth header for API requests */
+/** ============================
+ * AUTH HELPERS
+ * ============================ */
 export const getAuthHeader = (): Record<string, string> => {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-/** Check if authenticated */
 export const isAuthenticated = (): boolean => !!getToken();

@@ -35,7 +35,6 @@ export default function SignInPage() {
   const onSubmit = async (data: FormData) => {
     try {
       const res = await dispatch(signIn(data));
-      // @ts-ignore
       if (res.meta.requestStatus === "fulfilled") {
         router.push("/dashboard");
       }

@@ -1,41 +1,19 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/lib/apiClient";
 import {
-  saveToken,
-  saveRefreshToken,
   getToken,
   getRefreshToken,
-  saveUser,
   getUser,
+  saveToken,
+  saveRefreshToken,
+  saveUser,
   clearTokens,
   clearUser,
+  isRefreshTokenExpired,
 } from "@/lib/storage";
+import type { UserPayload } from "@/types/auth";
 
-interface UserPayload {
-  token: string;
-  userId: number;
-  roleId: number;
-  role: string;
-  subRoleId: number;
-  subRole: string;
-  userTypeId: number;
-  userType: string;
-  rangeId: number;
-  range: string;
-  areaIds: number[];
-  territoryId: number;
-  territoryName: string;
-  distributorId: number;
-  distributorName: string;
-  userAgencyId: number;
-  agencyName: string;
-  userName: string;
-  personalName: string;
-  gpsStatus: boolean;
-  serverTime: string;
-}
-
-export interface AuthState {
+interface AuthState {
   user: UserPayload | null;
   token: string | null;
   refreshToken: string | null;
@@ -43,9 +21,6 @@ export interface AuthState {
   error: string | null;
 }
 
-/** ===========================================================
- * Initial state loaded from localStorage for persistence
- * =========================================================== */
 const initialState: AuthState = {
   user: getUser(),
   token: getToken(),
@@ -54,70 +29,63 @@ const initialState: AuthState = {
   error: null,
 };
 
-/** ===========================================================
- * Async Thunks
- * =========================================================== */
-/** Login */
+// ===== LOGIN =====
 export const signIn = createAsyncThunk<
-  { user: UserPayload; token: string; refreshToken?: string },
+  { user: UserPayload; token: string; refreshToken: string },
   { userName: string; password: string },
   { rejectValue: string }
->("auth/signIn", async (payload, { rejectWithValue }) => {
+>("auth/signIn", async (credentials, { rejectWithValue }) => {
   try {
-    const response = await api.post("/api/v1/auth/login", payload);
+    const response = await api.post("/api/v1/auth/login", credentials);
+    if (!response.data?.payload?.token) throw new Error("Invalid login");
 
-    if (response.data.code !== 200 || !response.data.payload?.token)
-      throw new Error("Invalid credentials");
+    const user = response.data.payload as UserPayload;
+    const token = user.token;
+    const refreshToken = token; // or from backend if provided
 
-    const userData: UserPayload = response.data.payload;
-    const token = userData.token;
-
-    // Save token and user
     saveToken(token);
-    saveUser(userData);
-
-    // Simulate refreshToken until backend supports it
-    const refreshToken = token; // for now use same token
     saveRefreshToken(refreshToken);
+    saveUser(user);
 
-    return { user: userData, token, refreshToken };
-  } catch (error: any) {
-    return rejectWithValue(error.message || "Login failed");
+    return { user, token, refreshToken };
+  } catch (err: any) {
+    return rejectWithValue(err.message || "Login failed");
   }
 });
 
-/** Refresh access token */
+// ===== REFRESH TOKEN =====
 export const refreshAccessToken = createAsyncThunk<
   { token: string },
   void,
   { rejectValue: string }
->("auth/refreshToken", async (_, { rejectWithValue }) => {
+>("auth/refreshAccessToken", async (_, { rejectWithValue }) => {
   try {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) throw new Error("No refresh token found");
+    if (!refreshToken || isRefreshTokenExpired())
+      throw new Error("Session expired. Please login again.");
 
-    // Call backend refresh endpoint
+    // Backend refresh API
     const response = await api.post("/api/v1/auth/refresh", { refreshToken });
+    const token = response.data.payload?.token;
 
-    if (!response.data.payload?.token)
-      throw new Error("Failed to refresh token");
+    if (!token) throw new Error("Failed to refresh token");
 
-    const token = response.data.payload.token;
     saveToken(token);
     return { token };
-  } catch (error: any) {
+  } catch (err: any) {
     clearTokens();
     clearUser();
-    return rejectWithValue(error.message || "Token refresh failed");
+    return rejectWithValue(err.message || "Token refresh failed");
   }
 });
 
-/** Logout */
+// ===== LOGOUT =====
 export const signOut = createAsyncThunk("auth/signOut", async () => {
   clearTokens();
   clearUser();
 });
 
+// ===== SLICE =====
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -132,8 +100,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
-        state.refreshToken = action.payload.refreshToken || null;
-        state.error = null;
+        state.refreshToken = action.payload.refreshToken;
       })
       .addCase(signIn.rejected, (state, action) => {
         state.loading = false;
@@ -143,14 +110,15 @@ const authSlice = createSlice({
         state.token = action.payload.token;
       })
       .addCase(refreshAccessToken.rejected, (state) => {
+        state.user = null;
         state.token = null;
         state.refreshToken = null;
-        state.user = null;
       })
       .addCase(signOut.fulfilled, (state) => {
+        state.user = null;
         state.token = null;
         state.refreshToken = null;
-        state.user = null;
+        state.loading = false;
       });
   },
 });

@@ -1,4 +1,3 @@
-// lib/apiClient.ts
 import axios, {
   AxiosError,
   InternalAxiosRequestConfig,

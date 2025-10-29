@@ -18,7 +18,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function SignInPage() {
+const SignInPage = () => {
+  // Changed to a constant declaration
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
 
@@ -98,8 +99,8 @@ export default function SignInPage() {
             disabled={loading}
             className={`w-full py-2 px-4 text-white font-medium rounded-lg transition ${
               loading
-                ? "bg-blue-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-gray-600 hover:bg-gray-700"
             }`}>
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -107,4 +108,6 @@ export default function SignInPage() {
       </div>
     </div>
   );
-}
+};
+
+export default SignInPage; // Ensure export is at the end

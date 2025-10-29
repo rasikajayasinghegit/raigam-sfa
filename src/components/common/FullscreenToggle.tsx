@@ -21,7 +21,7 @@ export default function FullscreenToggle() {
   return (
     <button
       onClick={toggleFullscreen}
-      className="p-2 text-xl text-gray-700 transition"
+      className="p-2 text-xl text-gray-700 dark:text-white transition"
       title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
       {isFullscreen ? <FaCompress /> : <FaExpand />}
     </button>
